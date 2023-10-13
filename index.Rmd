@@ -1,0 +1,49 @@
+---
+site: distill::distill_website
+image: "fish3.jpg"
+links:
+  - label: Email
+    url: "mailto:ermarineconsulting@gmail.com"
+  - label: LinkedIn
+    url: "https://www.linkedin.com/in/eristig/"
+output:
+  postcards::trestles
+---
+#### **About**  
+Erin Ristig is an independent consultant working in the fields of marine conservation and fisheries management. Her experience includes data collection program design, capacity-building and facilitation, project and data management, science communication, and community-driven conservation in international settings. 
+
+She is passionate about design and adoption of technology that can help enhance marine conservation, implementation of fisheries data collection programs, and stakeholder facilitation and training.
+
+Erin has experience working in California, French Polynesia, Mexico, Argentina, Mozambique, and Ecuador.
+
+<br>
+
+##### **Clients (past and present)**                       
+Barefoot Ocean --
+California Marine Sanctuary Foundation --
+Environmental Defense Fund --
+Nature Analytics --
+NOAA --
+Rare --
+The Nature Conservancy --
+The Rahui Center --   
+UC Santa Barbara
+
+<br>
+
+##### **Education**   
+Master of Environmental Science and Management | Coastal Marine Resources Management | Bren School of Environmental Science & Management at UC Santa Barbara     
+
+Bachelor of Arts | Environmental Analysis and Spanish | Claremont McKenna College
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+# Learn more about creating websites with Distill at:
+# https://rstudio.github.io/distill/website.html
+
+# Learn more about publishing to GitHub Pages at:
+# https://rstudio.github.io/distill/publish_website.html#github-pages
+
+```
+
