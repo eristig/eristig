@@ -11,6 +11,8 @@ output:
 
 ### Management of a marine domain awareness system in California
 
-[eFINS](https://www.californiamsf.org/profile/c5938928-87e3-4bb4-9419-75cad3b5c910/profile) (short for the electronic Fisheries Information Network System) is an application developed in 2017 by the California Marine Sanctuary Foundation (CMSF), NOAA Channel Islands National Marine Sanctuary (CINMS), and Resources Legacy Fund (RLF). This data-focused tool allows marine patrol officers in California to electronically record, store, and reference geospatial data to better track and understand activities taking place in the marine environment. 
+eFINS (short for the electronic Fisheries Information Network System) is an application developed in 2017 by the California Marine Sanctuary Foundation (CMSF), NOAA Channel Islands National Marine Sanctuary (CINMS), and Resources Legacy Fund (RLF). This data-focused tool allows marine patrol officers in California to electronically record, store, and reference geospatial data to better track and understand activities taking place in the marine environment. 
 
 Work with marine patrol officers and partner organizations to streamline and improve the data collection system. Coordinate with wardens to optimize their user experience and ensure the system meets their needs. Design and create summary data reports to optimally inform stakeholders' marine domain awareness.
+
+[Learn more about eFINS](https://www.californiamsf.org/profile/c5938928-87e3-4bb4-9419-75cad3b5c910/profile)
