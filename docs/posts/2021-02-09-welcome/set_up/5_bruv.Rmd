@@ -1,0 +1,285 @@
+---
+title: "8_bruv"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+library(raster)
+library(tidyverse)
+library(janitor)
+library(here)
+library(sf)
+library(fasterize)
+library(tmap)
+library(ggmap)
+```
+
+*NOT SURE IF WE ACTUALLY NEED TO INCLUDE THIS FOR JUST LOOKING AT OCCURRENCE DATA*
+
+Notes from Dave:
+ - We remove any samples if they are more than 40% obscured, as there is a good chance we can't see any sharks/rays due to the obstruction (look in column titled "% obstruction";
+ - Some of the BRUV deployments did not film for the full 60 min, for whatever reason. As such, we use a cut off point of 80% to include the record in the analysis. I.e. if the video records for 60*80% = 48 min or more, then we keep it in the analysis. If less than 48 min, remove from analysis;
+ - For MaxN, only use the data from those records which say "Analysis" under the "Period" column. Any records which say "Extra time" or "On descent" should not be included in the analysis, however these can be used to see what species occur in a certain area.
+ - In the "Length data" sheet, I noticed that the lengths were not correct. We have sorted this out, whereby there is a new column called "Final length (mm)". For sharks this final length = FL and for rays = DW. If you need TL for sharks, you can find lenght-length equations on Fishbase for many (but not all) the species, to work out TL from FL. I have attached the spreadsheet again, which includes the Final FL/DW for the individuals measured. 
+ -  also forgot to mention, in addition to removing the obscured and deployments that fall under 48 min, also look at "Orientation". Any BRUVs that are facing "Up" (i.e. pointed towards the sea surface) must be removed for the analysis too, as these are essentially filming a different habitat (the pelagic habitat), and so should not be included together with the other samples.
+
+## *WCS BRUV MaxN data*
+Unsure about the length sheet...
+
+### *STEP 1: Read in WCS BRUV data*
+```{r, include = FALSE}
+#read in data
+# wcs_mz_bruv_length <- read_csv(here("set_up", "csv_files", "WCS_Mozambique_BRUV_data_for_Bren_2020-11-25.csv")) %>% 
+#   clean_names()
+
+wcs_mz_bruv_maxn <- read_csv(here("set_up", "csv_files", "WCS_Mozambique_BRUV_data_for_Bren_2020-11-25 - MaxN.csv")) %>% 
+  clean_names()
+
+#wcs_mz_bruv_full <- full_join(wcs_mz_bruv_length, wcs_mz_bruv_maxn, by = "sample_code")
+```
+
+### *STEP 2: Read in Mozambique EEZ sf and raster*
+```{r, include = FALSE}
+## Grab Moz Exclusive Economic Zone (EEZ) shapefile from local computer
+mz_eez_path <- 'G:/group_project/data/mz_eez'
+mz_shape <- list.files(mz_eez_path, full.names = TRUE) 
+
+mz_eez_sf <- sf::read_sf(mz_shape[6])
+
+## check coordinate system
+st_crs(mz_eez_sf)
+
+## Add a buffer of 10 km to make sure cells on the outer edges of the EEZ are included
+mz_eez_buffer_sf <- sf::st_buffer(mz_eez_sf, dist = 10000)
+
+## Read in Moz EEZ raster
+mz_rast_id <- raster(here("set_up/final_rasters/mz_eez_templates/mz_rast_id.tif"))
+```
+
+### *STEP 3: Create a sf object of BRUV data*
+```{r}
+## Create a data frame that only contains the lat/long coordinates and an id number
+wcs_mz_bruv_maxn_points <- wcs_mz_bruv_maxn %>% 
+  select(lat_x, long_y,genus_species) %>% 
+  drop_na(long_y) %>%  # had to remove NAs for the next function to work
+  mutate(id=1:n()) 
+
+## count the number of speces identified
+count_species <- wcs_mz_bruv_maxn_points %>% 
+  group_by(genus_species) %>% 
+  summarize(count = n())
+
+# Change `NA` values of names with `Unknown`: 
+wcs_mz_bruv_maxn_points$genus_species[is.na(wcs_mz_bruv_maxn_points$genus_species)] <- "Unknown"
+
+## Convert the data frame to a simple features object (sf) to create a geometry for each id
+wcs_bruv_sf_maxn  <-  st_as_sf(wcs_mz_bruv_maxn_points, coords = c("long_y", "lat_x"), crs= 4326) %>% 
+  st_transform(., crs = st_crs(mz_eez_sf)) # tranform to match the mz_eez crs
+
+
+## check to make sure it matches
+st_crs(wcs_bruv_sf_maxn)
+
+## plot to see what it looks like
+ggplot() +
+  geom_sf(data = mz_eez_sf) +
+  geom_sf(data = wcs_bruv_sf_maxn, aes(color = id),
+          show.legend = FALSE)
+
+tmap_mode("view") # Set to interactive viewing
+
+tm_shape(wcs_bruv_sf_maxn) +
+  tm_dots("genus_species", clustering = T, legend.show = FALSE, size = 0.5) 
+  #tm_basemap("Stamen.Terrain")
+
+```
+
+
+### Erin Noodling
+```{r, include = FALSE}
+wcs_bruv_tofo <- wcs_mz_bruv_maxn %>% 
+  filter(area == "Praia do Tofo") %>% 
+  select(lat_x, long_y,genus_species) %>% 
+  drop_na(long_y) %>%  # had to remove NAs for the next function to work
+  mutate(id=1:n()) 
+
+wcs_bruv_tofo$genus_species[is.na(wcs_bruv_tofo$genus_species)] <- "Unknown"
+
+wcs_bruv_sf_tofo  <-  st_as_sf(wcs_bruv_tofo, coords = c("long_y", "lat_x"), crs= 4326) %>% 
+  st_transform(., crs = st_crs(mz_eez_sf)) # tranform to match the mz_eez crs
+
+eez_crop <- st_crop(mz_eez_sf, xmin = 28, xmax = 41, ymax = -26, ymin = -22) 
+
+#basemap
+#tofo_basemap <- get_map(location=c(lon = -24, lat = 35.4), zoom=11, maptype = 'terrain-background', source = 'stamen')
+
+ggplot() +
+  geom_sf(data = eez_crop) +
+  geom_sf(data = wcs_bruv_sf_tofo, aes(color = genus_species),
+          show.legend = FALSE)
+  #coord_sf(xlim = c(32, 37), ylim = c(22, 26), expand = FALSE)
+```
+
+### *STEP 4: Create a sp object and raster of BRUV data*
+Because we are dealing with point data, we cannot use fasterize to create a raster. Instead, we convert the `sf` simple features to `sp` Spatial objects and then use rasterize to create a raster. 
+```{r, include = FALSE}
+## check the class of sf
+class(wcs_bruv_sf_maxn)
+
+## change to a sp object
+wcs_bruv_sp_maxn <- as(wcs_bruv_sf_maxn, 'Spatial')
+
+## check the class to make sure it worked
+class(wcs_bruv_sp_maxn)
+
+## double check that this matches your RASTER file (which should be the same as the sf)
+crs(wcs_bruv_sp_maxn)
+
+## make a raster 
+wcs_bruv_rast_maxn <- raster::rasterize(wcs_bruv_sp_maxn, mz_rast_id, field = "id")
+
+## plot to see what it looks like
+plot(wcs_bruv_rast_maxn)
+
+## Save as raster
+writeRaster(wcs_bruv_rast_maxn, here('set_up/final_rasters/bruv/wcs_bruv_maxn.tif'), overwrite = TRUE)
+```
+
+
+## *POPMR BRUV data*
+Follow the same steps as above.
+
+### *STEP 1: Read in POPMR BRUV data*
+```{r, include = FALSE}
+#read in data
+popmr_bruv <- read_csv(here("set_up", "csv_files", "PPMR_ELAS subset_Finalised.csv")) %>% 
+  clean_names() %>% 
+  select(sample_code, y, x) %>% #select only the sample code, lat, and long
+  drop_na(sample_code)%>%  # had to remove NAs for the next function to work
+  mutate(id=1:n())
+```
+
+### *STEP 2: Read in Mozambique EEZ sf and raster*
+Look at code above.
+
+### *STEP 3: Create a sf object of BRUV data*
+```{r, include = FALSE}
+
+## Convert the data frame to a simple features object (sf) to create a geometry for each id
+popmr_bruv_sf  <-  st_as_sf(popmr_bruv, coords = c("x", "y"), crs= 4326) %>% 
+  st_transform(., crs = st_crs(mz_eez_sf)) # tranform to match the mz_eez crs
+
+## check to make sure it matches
+st_crs(popmr_bruv_sf)
+
+## plot to see what it looks like
+ggplot() +
+  geom_sf(data = mz_eez_sf) +
+  geom_sf(data = popmr_bruv_sf, aes(color = id),
+          show.legend = FALSE)
+
+tmap_mode("view") # Set to interactive viewing
+
+tm_shape(popmr_bruv_sf) +
+  tm_dots("id", clustering = T, legend.show = FALSE, size = 0.5) +
+  tm_basemap("Stamen.Terrain")
+```
+
+### *STEP 4: Create a sp object and raster of BRUV data*
+Because we are dealing with point data, we cannot use fasterize to create a raster. Instead, we convert the `sf` simple features to `sp` Spatial objects and then use rasterize to create a raster. 
+```{r, include = FALSE}
+## check the class of sf
+class(popmr_bruv_sf)
+
+## change to a sp object
+popmr_bruv_sp <- as(popmr_bruv_sf, 'Spatial')
+
+## check the class to make sure it worked
+class(popmr_bruv_sp)
+
+## double check that this matches your RASTER file (which should be the same as the sf)
+crs(popmr_bruv_sp)
+
+## make a raster 
+popmr_bruv_rast <- raster::rasterize(popmr_bruv_sp, mz_rast_id, field = "id")
+
+## plot to see what it looks like
+plot(popmr_bruv_rast)
+
+## Save as raster
+writeRaster(popmr_bruv_rast, here('set_up/final_rasters/bruv/popmr_bruv.tif'), overwrite = TRUE)
+```
+
+
+## *Northern Mozambique BRUV data*
+Follow the same steps as above. *THIS DATASET IS OVER 1 MILLION OBSERVATIONS DON'T PUT ON GITHUB*
+
+### *STEP 1: Read in NM BRUV data*
+```{r, include = FALSE}
+#read in data
+nm_bruv <- read_csv(here("set_up", "csv_files", "Northern_Mozambique_dataset_2020-11-25.csv")) %>% 
+  clean_names() %>% 
+  select(sample_code, lat, long) %>% #select only the sample code, lat, and long
+  drop_na(sample_code)%>%  # had to remove NAs for the next function to work
+  mutate(id=1:n())
+```
+
+### *STEP 2: Read in Mozambique EEZ sf and raster*
+Look at code above.
+
+### *STEP 3: Create a sf object of BRUV data*
+```{r, include = FALSE}
+
+## Convert the data frame to a simple features object (sf) to create a geometry for each id
+nm_bruv_sf  <-  st_as_sf(nm_bruv, coords = c("long", "lat"), crs= 4326) %>% 
+  st_transform(., crs = st_crs(mz_eez_sf)) # tranform to match the mz_eez crs
+
+## check to make sure it matches
+st_crs(nm_bruv_sf)
+
+## plot to see what it looks like
+ggplot() +
+  geom_sf(data = mz_eez_sf) +
+  geom_sf(data = nm_bruv_sf, aes(color = id),
+          show.legend = FALSE)
+
+tm_shape(nm_bruv_sf) +
+  tm_dots("id", clustering = T, legend.show = FALSE, size = 0.5) +
+  tm_basemap("Stamen.Terrain")
+```
+
+### *STEP 4: Create a sp object and raster of BRUV data*
+Because we are dealing with point data, we cannot use fasterize to create a raster. Instead, we convert the `sf` simple features to `sp` Spatial objects and then use rasterize to create a raster. 
+```{r, include = FALSE}
+## check the class of sf
+class(nm_bruv_sf)
+
+## change to a sp object
+nm_bruv_sp <- as(nm_bruv_sf, 'Spatial')
+
+## check the class to make sure it worked
+class(nm_bruv_sp)
+
+## double check that this matches your RASTER file (which should be the same as the sf)
+crs(nm_bruv_sp)
+
+## make a raster 
+nm_bruv_rast <- raster::rasterize(nm_bruv_sp, mz_rast_id, field = "id")
+
+## plot to see what it looks like
+plot(nm_bruv_rast)
+
+## Save as raster
+writeRaster(nm_bruv_rast, here('set_up/final_rasters/bruv/nm_bruv.tif'), overwrite = TRUE)
+```
+
+
+
+
+
+
+
+
+

@@ -3,7 +3,7 @@ site: distill::distill_website
 image: "fish3.jpg"
 links:
   - label: Email
-    url: "mailto:ermarineconsulting@gmail.com"
+    url: "mailto:erin.ristig@gmail.com"
   - label: LinkedIn
     url: "https://www.linkedin.com/in/eristig/"
 output:

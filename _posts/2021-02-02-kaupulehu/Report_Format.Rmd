@@ -1,0 +1,235 @@
+---
+output: 
+html_document:
+  theme: lumen
+workflowr:
+    knit_root_dir: "analysis"
+---
+  
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+```
+
+```{r, include = FALSE, echo = FALSE}
+library(here)
+library(workflowr)
+
+#Read in functions
+source("Size_Limit_Functions.R")
+
+# Read in CSV
+species <- read_csv("Final_Species_List.csv")
+```
+
+```{r, include = FALSE, echo = FALSE, warning = FALSE, message = FALSE}
+### Conduct analysis
+
+## Step 1. Set number of species to analyze
+#MyParsList<-apply(species, 1, lh_function)
+#saveRDS(MyParsList, file="MyParsList.rds")
+MyParsList<-readRDS("MyParsList.rds")
+
+## Step 2. Set SL & FM options 
+SL_options<-c(0.9, 1, 1.1, 1.2, 1.3, 1.5, 2)
+FM_options<-c(1, 2, 4)
+
+## Step 3. Run analysis function ypr_function
+#output<-ypr_function(MyParsList, SL_options, FM_options)
+#saveRDS(output, file="output.rds")
+output<-readRDS("output.rds")
+```
+
+```{r, include = FALSE, echo = FALSE, warning = FALSE, message = FALSE}
+
+## This code creates column formatting that is called when using multi.col=TRUE. Used in positioning two tables/figs side by side
+library(stringi)
+knitr::opts_chunk$set(echo = FALSE, fig.align = "center")
+defChunkHook <- knitr::knit_hooks$get("chunk")
+knitr::knit_hooks$set(chunk = function(x, options) {
+  x <- defChunkHook(x, options)
+  if(!is.null(options$multi.col)) {
+    x    <- gsub("(\n\`\`\`\n##.*?\`\`\`)", "<div>\\1\n</div>", x)  # wrap div around output chunks
+    x    <- gsub("(<img.*?>)", "<div>\\1\n</div>", x)               # wrap div around plots
+    ncol <- nrow(stri_locate_all(x, regex = "<div.*?>")[[1]])       # get the number of div elements created
+    x    <- gsub("<div>", paste0("<div style=\"width:", 100/ncol,"%;\">"), x)  # add the width to the divs
+    x    <- paste0("<div class=\"multi-col\" style=\"display: flex; justify-content: space-between; align-items: center;\">\n", x, "</div>")  # wrap the mother div around all of the output
+  }
+  x
+})
+```
+
+<div align="center"> <font size="+3"> **Appendix 1** </font> 
+<div align="center"> <font size="+2"> Spawning Potential Ratio and Yield per Recruit Analyses </font> 
+
+***
+
+<div align="left"> <font size="+2"> **Acanthuridae - Surgeonfishes** </font> 
+  
+***
+  
+```{r, include = FALSE}
+src <- lapply(
+  c(1:12), 
+  FUN = function(x) {
+    knitr::knit_expand(
+      file = here::here("/child/Species_summary.Rmd"), 
+      k = x
+    )
+  }
+)
+```
+`r knitr::knit(text = unlist(src))`
+
+<div align="left"> <font size="+2"> **Albulidae - Bonefishes** </font> 
+  
+  ***
+  
+```{r, include = FALSE}
+src <- lapply(
+  c(13:14), 
+  FUN = function(x) {
+    knitr::knit_expand(
+      file = here::here("/child/Species_summary.Rmd"), 
+      k = x
+    )
+  }
+)
+```
+`r knitr::knit(text = unlist(src))`
+
+
+<div align="left"> <font size="+2"> **Carangidae - Jacks** </font>  
+  
+  ***
+  
+```{r, include = FALSE}
+src <- lapply(
+  c(15:21), 
+  FUN = function(x) {
+    knitr::knit_expand(
+      file = here::here("/child/Species_summary.Rmd"), 
+      k = x
+    )
+  }
+)
+```
+`r knitr::knit(text = unlist(src))`
+
+<div align="left"> <font size="+2"> **Holocentridae - Squirrelfishes** </font> 
+  
+  ***
+  
+```{r, include = FALSE}
+src <- lapply(
+  c(22), 
+  FUN = function(x) {
+    knitr::knit_expand(
+      file = here::here("/child/Species_summary.Rmd"), 
+      k = x
+    )
+  }
+)
+```
+`r knitr::knit(text = unlist(src))`
+
+<div align="left"> <font size="+2"> **Lutjanidae - Snappers** </font> 
+  
+  ***
+  
+```{r, include = FALSE}
+src <- lapply(
+  c(23:24), 
+  FUN = function(x) {
+    knitr::knit_expand(
+      file = here::here("/child/Species_summary.Rmd"), 
+      k = x
+    )
+  }
+)
+```
+`r knitr::knit(text = unlist(src))`
+
+<div align="left"> <font size="+2"> **Mugilidae - Mullets** </font> 
+  
+  ***
+  
+```{r, include = FALSE}
+src <- lapply(
+  c(25), 
+  FUN = function(x) {
+    knitr::knit_expand(
+      file = here::here("/child/Species_summary.Rmd"), 
+      k = x
+    )
+  }
+)
+```
+`r knitr::knit(text = unlist(src))`
+
+<div align="left"> <font size="+2"> **Mullidae - Goatfishes** </font> 
+  
+  ***
+  
+```{r, include = FALSE}
+src <- lapply(
+  c(26:29), 
+  FUN = function(x) {
+    knitr::knit_expand(
+      file = here::here("/child/Species_summary.Rmd"), 
+      k = x
+    )
+  }
+)
+```
+`r knitr::knit(text = unlist(src))`
+
+<div align="left"> <font size="+2"> **Scaridae - Parrotfishes** </font> 
+  
+  ***
+  
+```{r, include = FALSE}
+src <- lapply(
+  c(30:34), 
+  FUN = function(x) {
+    knitr::knit_expand(
+      file = here::here("/child/Species_summary.Rmd"), 
+      k = x
+    )
+  }
+)
+```
+`r knitr::knit(text = unlist(src))`
+
+<div align="left"> <font size="+2"> **Serranidae - Sea basses** </font>  
+  
+  ***
+  
+```{r, include = FALSE}
+src <- lapply(
+  c(35), 
+  FUN = function(x) {
+    knitr::knit_expand(
+      file = here::here("/child/Species_summary.Rmd"), 
+      k = x
+    )
+  }
+)
+```
+`r knitr::knit(text = unlist(src))`
+
+<div align="left"> <font size="+2"> **Sphyraenidae - Barracudas** </font>  
+  
+  ***
+  
+```{r, include = FALSE}
+src <- lapply(
+  c(36), 
+  FUN = function(x) {
+    knitr::knit_expand(
+      file = here::here("/child/Species_summary.Rmd"), 
+      k = x
+    )
+  }
+)
+```
+`r knitr::knit(text = unlist(src))`

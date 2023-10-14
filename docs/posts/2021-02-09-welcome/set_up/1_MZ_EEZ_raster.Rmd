@@ -1,0 +1,127 @@
+---
+---
+title: "1_MZ_EEZ_raster"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#load packages 
+#Since raster has a "select" function but we more often use the tidyverse::select, load raster first, and let tidyverse overwrite that function.
+library(raster)
+library(tidyverse)
+library(sf)
+library(here)
+library(fasterize)
+
+```
+
+## *STEP 1: Setting up the MZ EEZ File*
+```{r, include=FALSE}
+
+## Grab Moz Exclusive Economic Zone (EEZ) shapefile from local computer
+mz_eez_path <- 'G:/group_project/data/mz_eez'
+mz_shape <- list.files(mz_eez_path, full.names = TRUE) 
+
+## Read in shapefile as simple feature 
+mz_eez_sf <- sf::read_sf(mz_shape[6])
+
+## check coordinate system
+st_crs(mz_eez_sf)
+
+## Add a buffer of 10 km to make sure cells on the outer edges of the EEZ are included
+mz_eez_buffer_sf <- sf::st_buffer(mz_eez_sf, dist = 10000)
+
+## Create data frame from simple feature to see data more readily (not necessary, but helpful for larger sf)
+mz_eez_df <- mz_eez_sf %>% as.data.frame() %>% select(-geometry)
+
+## Use Moz EEZ to set extent for future rasters
+mz_ext <- raster::extent(mz_eez_buffer_sf)
+# class      : Extent 
+# xmin       : 3119112 
+# xmax       : 4159767 
+# ymin       : -3412817 
+# ymax       : -1270921 
+
+```
+
+### *Create MZ raster with Cell IDs*
+```{r, include=FALSE}
+
+## Create raster with cell ids and clip to MZ EEZ raster
+mz_rast_id <- raster::raster(x=mz_ext, crs=crs(mz_eez_sf), res=10000)
+
+## Assign cell values
+values(mz_rast_id) <- 1:ncell(mz_rast_id) 
+
+## Create data frame to check it out
+mz_rast_id_df <- rasterToPoints(mz_rast_id) %>% as.data.frame()
+
+## Plot to make sure it looks good
+plot(mz_rast_id)
+
+## Mask it to only include the EEZ
+mz_rast_id <- mask(mz_rast_id, mz_eez_sf)
+plot(mz_rast_id)
+
+## Let's save this cell id raster as tif file - hashtagged this out for now since the tif is too big
+writeRaster(mz_rast_id, here('set_up/final_rasters/mz_eez_templates/mz_rast_id.tif'), overwrite = TRUE)
+
+### Let's save this mz raster with cell ids as tif file
+#writeRaster(mz_eez_rast, here('set_up/final_rasters/mz_eez_templates/mz_eez_rast.tif'), overwrite = TRUE) --> do we need this?
+
+```
+
+
+### *Create raster with higher res of 1000 m*
+Also need to set up rast id with higher resolution of 1000 m to use when we rasterize some of our conservation feature layers that are at a finer resolution like coral and mangroves
+```{r, include=FALSE}
+
+## Create raster with res=100 
+#mz_eez_rast_100 <- raster::raster(x=extent(mz_rast_id), crs=crs(mz_eez_sf), res=100)
+ 
+## Assign cell values
+#values(mz_eez_rast_100) <- 1:ncell(mz_eez_rast_100)
+
+## Mask to Moz EEZ
+#mz_eez_rast_100 <- mask(mz_eez_rast_100, mz_eez_buffer_sf)
+
+## Plot and create data frame to validate it looks good
+#plot(mz_eez_rast_100)
+#mz_rast_id_df <- rasterToPoints(mz_eez_rast_100) %>% as.data.frame()
+
+
+### Use Moz EEZ to raster with 1000 m resolution 
+mz_eez_rast_1000 <- raster::raster(x=extent(mz_rast_id), crs=crs(mz_eez_sf), res=1000)
+
+## Assign cell values
+values(mz_eez_rast_1000) <- 1:ncell(mz_eez_rast_1000)
+
+## Mask to Moz EEZ
+mz_eez_rast_1000 <- mask(mz_eez_rast_1000, mz_eez_sf)
+
+## Plot and create data frame to validate it looks good
+plot(mz_eez_rast_1000)
+mz_rast_id_df <- rasterToPoints(mz_eez_rast_1000) %>% as.data.frame()
+
+
+## Let's save this mz raster with cell ids as tif file
+#writeRaster(mz_eez_rast_100, here('set_up/final_rasters/mz_eez_templates/mz_eez_rast_100.tif'), overwrite = TRUE)
+
+## Let's save this mz raster with cell ids as tif file
+writeRaster(mz_eez_rast_1000, here('set_up/final_rasters/mz_eez_templates/mz_eez_rast_1000.tif'), overwrite = TRUE)
+
+```
+
+Citations:
+ - 
+ 
+Outputs:
+
+- `mz_rast_id` = raster of the Mozambique EEZ at 10000 resolution with cell ids
+- `mz_rast_100` = raster of the Mozambique EEZ at 100 resolution with cell ids
+- `mz_rast_1000`= raster of the Mozambique EEZ at 1000 resolution with cell ids
+= `mz_eez_sf` = simple features of the Mozambique EEZ
+
+End script.

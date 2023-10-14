@@ -1,0 +1,18 @@
+---
+title: "Fish science learning modules"
+description: |
+  Client: Nature Analytics/The Nature Conservancy
+date: 01-30-2022
+output:
+  distill::distill_article:
+    self_contained: false
+    code_folding: true
+---
+
+### A series of learning modules created for The Nature Conservancy's FishKit
+
+Created the [Fish Science Learning Modules](https://fisheriestoolkit.org/fish-science-learning-module/), resources designed to teach the concepts of YPR (yield-per-recruit) and SPR (spawning potential ratio) and their applications to fishery management. The goal of these modules is to provide an overview of the general concepts of YPR and SPR and how they can be used in fishery management. It is not designed to be an exhaustive description of YPR and SPR. Rather, it is aimed at audiences who lack formal fisheries science training, but are interested in better understanding the complicated fisheries concepts of YPR and SPR. 
+
+The nine learning modules cover the topics of Yield-per-recruit; Spawning Potential Ratio; Growth overfishing; Recruitment overfishing; Life history information; Size limits; Setting size limits; Multi-species size limits; and Length frequencies.
+
+

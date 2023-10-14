@@ -1,0 +1,18 @@
+---
+title: "Size limit builder tool"
+description: |
+ Client: Nature Analytics/The Nature Conservancy
+date: 12-01-2021
+output:
+  distill::distill_article:
+    self_contained: false
+    code_folding: true
+---
+
+### An online Size limit tool created for The Nature Conservancy's FishKit
+
+Was involved in the conception, envisioning, coding and design of a [Size Limit Builder Tool](https://fisheriestoolkit.org/size-limits/), which delivers fast and practical fisheries science to groups that are looking to design size limits for their fishery.
+
+The size limit builder utilizes principles of fish biology to project the effects of different size limits on fishing yields and protection of spawners. Insights from comparing different size limits in this way can illustrate tradeoffs between catch and conservation, helping to align outcomes with management objectives.
+
+

@@ -1,0 +1,129 @@
+---
+title: "Distance"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#load packages
+library(raster)
+library(tidyverse)
+library(sf)
+library(here)
+library(fasterize)
+library(stringr)
+library(janitor)
+library(fasterize)
+```
+
+## Upper Shelf Raster
+Depth at 50m (hopefully)
+
+#### **STEP 1: Read in Mozambique EEZ and Shapefile**
+```{r}
+## read in MZ EEZ tif
+mz_rast_id <- raster(here("set_up/final_rasters/mz_eez_templates/mz_rast_id.tif"))
+
+## Grab Moz Exclusive Economic Zone (EEZ) shapefile from local computer
+mz_eez_path <- 'G:/group_project/data/mz_eez'
+mz_shape <- list.files(mz_eez_path, full.names = TRUE) 
+
+mz_eez_sf <- sf::read_sf(mz_shape[6])
+
+## check coordinate system
+st_crs(mz_eez_sf)
+
+## Add a buffer of 10 km to make sure cells on the outer edges of the EEZ are included
+mz_eez_buffer_sf <- sf::st_buffer(mz_eez_sf, dist = 10000)
+```
+
+#### **STEP 2: Read in Bathymetry Data (rachel edited?)**
+```{r}
+## Grab Moz Exclusive Economic Zone (EEZ) shapefile from local computer
+bathy_path <- 'G:/group_project/data/habitats/bathy_classes/rachel_edited'
+bathy_shape <- list.files(bathy_path, full.names = TRUE) 
+
+bathy_sf <- sf::read_sf(bathy_shape[8])
+
+bathy_df <- bathy_sf %>%
+  as.data.frame() %>% 
+  select(-geometry)
+
+## check coordinate system
+st_crs(bathy_sf) == st_crs(mz_eez_sf)
+
+### create dataframe that only contains species and changes to correct crs
+bathy_sf_reproj <- bathy_sf %>% 
+  st_transform(., crs = st_crs(mz_eez_sf)) 
+
+### check crs to make sure it matches
+st_crs(bathy_sf_reproj) == st_crs(mz_eez_sf)
+```
+
+#### **STEP 3: Create a raster from the sf files**
+```{r}
+## check the class of sf
+class(bathy_sf_reproj)
+
+## change to a sp object
+bathy_sp <- as(bathy_sf_reproj, 'Spatial')
+
+## check the class to make sure it worked
+class(bathy_sp)
+
+## double check that this matches your RASTER file (which should be the same as the sf)
+crs(bathy_sp)
+
+## make a raster 
+bathy_rast <- raster::rasterize(bathy_sp, mz_rast_id, field = "gridcode")
+
+## plot to see what it looks like
+plot(bathy_rast)
+```
+
+#### **STEP 4: Reclassify the depth classes so only show the Upper Shelf (~50m depth)**
+Not sure if this is correct, but there is no number for depth just classifications -- change if needed
+```{r}
+## create a matrix of needed classes
+m <- c(0.00, 7, NA, # made NA (instead of 0) for distance decay 
+       8, 8, 1)
+
+### wrap the vector into a matrix by rows
+rcl_mtx <- matrix(m, ncol=3, byrow=TRUE)
+
+## reclassify with the new matrix
+bathy_reclass <- reclassify(bathy_rast, rcl_mtx)
+
+## plot it to check
+plot(bathy_reclass)
+
+### save it
+writeRaster(bathy_reclass, here('set_up/final_rasters/costs/bathy_rast.tif'), overwrite = TRUE)
+```
+
+
+## Distance Decay with 50m priorization (from above)
+
+```{r}
+## use the raster::distance() function, which calculates a distance for every NA cell to the nearest non-NA cell.
+dist_rast <- raster::distance(bathy_reclass) %>% 
+  mask(mz_eez_sf) # mask so the land distances are not calculated
+
+## plot it!
+plot(dist_rast)
+
+## created a dataframe to check it out
+dist_df <- dist_rast %>%
+  rasterToPoints() %>%
+  as.data.frame()
+
+### save it
+writeRaster(dist_rast, here('set_up/final_rasters/costs/dist_rast.tif'), overwrite = TRUE)
+
+```
+
+
+
+
+
+

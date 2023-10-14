@@ -1,0 +1,142 @@
+---
+title: "4_pu_setup"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load in packages
+library(raster)
+library(tidyverse)
+library(sf)
+library(here)
+library(fasterize)
+library(janitor)
+```
+
+### **STEP 1: Read in Mozambique EEZ and Shapefile**
+```{r}
+## read in MZ EEZ tif
+mz_rast_id <- raster(here("set_up/final_rasters/mz_eez_templates/mz_rast_id.tif"))
+
+## Grab Moz Exclusive Economic Zone (EEZ) shapefile from local computer
+mz_eez_path <- 'G:/group_project/data/mz_eez'
+mz_shape <- list.files(mz_eez_path, full.names = TRUE) 
+
+mz_eez_sf <- sf::read_sf(mz_shape[6])
+
+## check coordinate system
+st_crs(mz_eez_sf)
+
+## Add a buffer of 10 km to make sure cells on the outer edges of the EEZ are included
+mz_eez_buffer_sf <- sf::st_buffer(mz_eez_sf, dist = 10000)
+```
+
+
+### **STEP 2: Setting up existing marine protected areas**
+```{r}
+## Grab protected area shapefile from computer
+exist_mpa_path <- 'G:/group_project/data/existing_mpas'
+mpa_shape <- list.files(exist_mpa_path, full.names = TRUE)
+
+## Read in the shapefile as a simple feature
+mpa_sf <- sf::read_sf(mpa_shape[6]) 
+
+## Check the CRS of the simple feature to make sure it matches the Mozambique Raster 
+st_crs(mpa_sf)
+
+## CRS matches so lets make a raster using the mz_rast_id to set the extent
+mpa_rast <- fasterize::fasterize(mpa_sf, mz_rast_id)
+
+## Double check the CRS again 
+crs(mpa_rast)
+
+## Plot to make sure it looks good, note this shapefile includes all terrestrial protected areas as well so we need to clip it to just include those in the water (the EEZ)
+plot(mpa_rast)
+
+## Mask the rater to the EEZ 
+mpa_rast <- mask(mpa_rast, mz_eez_sf) 
+
+## Double check CRS of new raster & plot to make sure it looks good
+crs(mpa_rast)
+plot(mpa_rast)
+
+## Looks good! Save as a tif file
+writeRaster(mpa_rast, here('set_up/final_rasters/planning_unit/exist_mpa.tif'), overwrite = TRUE)
+```
+
+
+### **STEP 3: Set up key biodiversity areas**
+```{r}
+## Read in oil tif from local computer as a raster
+kba_path <- 'G:/group_project/data/kba'
+kba_shape <- list.files(kba_path, full.names = TRUE)
+
+
+## Read in the shapefile as a simple feature
+kba_sf <- sf::read_sf(kba_shape[6]) 
+
+## Check the CRS of the simple feature to make sure it matches the Mozambique Raster 
+st_crs(kba_sf)
+
+## CRS matches so lets make a raster using the mz_rast_id to set the extent
+kba_rast <- fasterize::fasterize(kba_sf, mz_rast_id)
+
+## Double check the CRS again 
+crs(kba_rast)
+
+## Plot to make sure it looks good, note this shapefile includes all terrestrial protected areas as well so we need to clip it to just include those in the water (the EEZ)
+plot(kba_rast)
+
+## Mask the rater to the EEZ 
+kba_rast <- mask(kba_rast, mz_eez_sf) 
+
+## Double check CRS of new raster & plot to make sure it looks good
+crs(kba_rast)
+plot(kba_rast)
+
+## Looks good! Save as a tif file
+writeRaster(kba_rast, here('set_up/final_rasters/planning_unit/kba.tif'), overwrite = TRUE)
+```
+
+
+### **STEP 4: Set up aggregation sites**
+```{r}
+## Read in oil tif from local computer as a raster
+aggregation_path <- 'G:/group_project/data/aggregation_sites'
+aggregation_shape <- list.files(aggregation_path, full.names = TRUE)
+
+
+## Read in the shapefile as a simple feature
+aggregation_sf <- sf::read_sf(aggregation_shape[6]) 
+
+## Check the CRS of the simple feature to make sure it matches the Mozambique Raster 
+st_crs(aggregation_sf)
+
+## CRS matches so lets make a raster using the mz_rast_id to set the extent
+aggregation_rast <- fasterize::fasterize(aggregation_sf, mz_rast_100)
+
+# Aggregate to become a coarser resolution at 10000 m
+aggregation_rast_agg <- raster::aggregate(aggregation_rast, fact=100, fun=sum, na.rm = TRUE)
+aggregation_rast_agg_per <- aggregation_rast_agg/10000
+
+## mask to the MZ EEZ
+aggregation_rast_agg_per <- mask(aggregation_rast_agg_per, mz_eez_sf)
+
+## Lets plot to see what it looks like
+plot(aggregation_rast_agg_per)
+
+## Save coral aggregate as raster
+writeRaster(aggregation_rast_agg_per, here('set_up/final_rasters/planning_unit/aggregation_sites.tif'), overwrite = TRUE)
+
+```
+Citations:
+ - 
+ 
+Outputs:
+
+ - `exist_mpa` = raster of existing MPAs in Mozambique's EEZ 
+ - `oil_rig` = raster of existing oil rigs in Mozambique's EEZ
+
+End script.

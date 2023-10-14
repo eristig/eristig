@@ -1,0 +1,70 @@
+---
+title: "10_inverse_combined_fishing_layer"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(raster)
+library(tidyverse)
+library(sf)
+library(here)
+library(fasterize)
+library(stringr)
+library(janitor)
+library(spatialEco)
+```
+
+
+```{r}
+#Call Artisanal
+```
+
+```{r}
+#Create "new" industrial
+```
+
+```{r}
+#Combine
+
+##Method 1 - Simple; just inverse the other combined layer
+combined_inverse_simple <- raster(here("set_up", "final_rasters", "costs", "combined_stack_sum.tif"))
+
+plot(combined_inverse_simple)
+
+combined_inverse_simple_rast <- raster.invert(combined_inverse_simple)
+
+plot(combined_inverse_simple_rast)
+
+writeRaster(combined_inverse_simple_rast, here("set_up", "final_rasters", "costs", "combined_inverse_simple.tif"), overwrite = TRUE)
+
+##Method 2 - Cumulative; use the unrescaled industrial and combine with artisanal
+industrial_cumulative <- brick(here('set_up/final_rasters/costs/cost_industrial_sum_unscaled.tif'))
+
+artisanal <- raster(here('set_up/final_rasters/costs/cost_art_fish.tif'))
+
+combined_inverse_cumulative <- stack(industrial_cumulative, artisanal)
+
+plot(combined_inverse_cumulative)
+
+combined_sum_2 <- calc(combined_inverse_cumulative, fun = sum)
+
+combined_sum_inverse <- raster.invert(combined_sum_2)
+plot(combined_sum_inverse)
+
+writeRaster(combined_sum_inverse, here("set_up", "final_rasters", "costs", "combined_inverse_complex.tif"), overwrite = TRUE)
+
+```
+
+```{r}
+tmap_mode("view") # Set to interactive viewing
+
+tm_shape(combined_inverse_simple_rast) +
+  tm_basemap("Stamen.Terrain")+
+  tm_raster("combined_stack_sum", alpha=0.9, palette = "viridis")
+  
+```
+

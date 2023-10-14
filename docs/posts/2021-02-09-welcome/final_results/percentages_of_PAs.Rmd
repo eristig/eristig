@@ -1,0 +1,65 @@
+---
+title: "Percentages of Prioritized Areas"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(raster)
+library(tidyverse)
+library(sf)
+library(here)
+library(fasterize)
+library(stringr)
+library(janitor)
+library(rgdal)
+library(ggmap)
+library(tmap)
+```
+
+####Calculating the Percentages of Prioritized Areas 
+This markdown is to calculate the percentage of protected areas for the 10% and 50% conservation target. You can find the calculations for 20% conservation target in `final_maps.Rmd`
+
+```{r}
+## create function to calculate the percentage of protected area
+calc_percent_protected <- function(final_raster, x){
+  final_raster_df <- rasterToPoints(final_raster) %>%
+  as.data.frame() %>%
+  group_by({{x}}) %>%
+  summarise(count = n()) %>%
+  mutate(total = (count/sum(count)*100))
+}
+```
+
+#### Looking at 10% Conservation Target
+```{r}
+area_10_6hr_blm0.000001 <- raster(here("final_results/scenario_1_area/sprob_area_10_6hr_blm0.000001.tif"))
+area_10_6hr_blm0 <- raster(here("final_results/scenario_1_area/sprob_area_10_6hr_blm0.tif"))
+
+percent_area_10_6hr_blm0.000001 <- calc_percent_protected(area_10_6hr_blm0.000001,sprob_area_10_6hr_blm0.000001)
+percent_area_10_6hr_blm0 <- calc_percent_protected(area_10_6hr_blm0,sprob_area_10_6hr_blm0)
+
+combined_10_6hr_blm0.000001 <- raster(here("final_results/scenario_4_combined/sprob_combined_10_6hr_blm0.000001.tif"))
+combined_10_6hr_blm0 <- raster(here("final_results/scenario_4_combined/sprob_combined_10_6hr_blm0.tif"))
+
+percent_combined_10_6hr_blm0.000001 <- calc_percent_protected(combined_10_6hr_blm0.000001,sprob_combined_10_6hr_blm0.000001)
+percent_combined_10_6hr_blm0 <- calc_percent_protected(combined_10_6hr_blm0,sprob_combined_10_6hr_blm0)
+
+
+```
+
+```{r}
+area_50_6hr_blm0.000001 <- raster(here("final_results/scenario_1_area/sprob_area_50_6hr_blm0.000001.tif"))
+area_50_6hr_blm0 <- raster(here("final_results/scenario_1_area/sprob_area_50_6hr_blm0.tif"))
+
+percent_area_50_6hr_blm0.000001 <- calc_percent_protected(area_50_6hr_blm0.000001,sprob_area_50_6hr_blm0.000001)
+percent_area_50_6hr_blm0 <- calc_percent_protected(area_50_6hr_blm0,sprob_area_50_6hr_blm0)
+
+combined_50_6hr_blm0.000001 <- raster(here("final_results/scenario_4_combined/sprob_combined_50_6hr_blm0.000001.tif"))
+combined_50_6hr_blm0 <- raster(here("final_results/scenario_4_combined/sprob_combined_50_6hr_blm0.tif"))
+
+percent_combined_50_6hr_blm0.000001 <- calc_percent_protected(combined_50_6hr_blm0.000001 ,sprob_combined_50_6hr_blm0.000001)
+percent_combined_50_6hr_blm0 <- calc_percent_protected(combined_50_6hr_blm0, sprob_combined_50_6hr_blm0)
+
+```

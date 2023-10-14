@@ -1,0 +1,63 @@
+---
+name: Erin
+surname: Ristig
+position: "Student"
+address: "Bren School of Environmental Science and Management, UCSB"
+phone: +1 805 280 8918
+email: "erin.ristig@gmail.com"
+github: eristig
+linkedin: eristig
+date: "`r format(Sys.time(), '%B %Y')`"
+output: vitae::awesomecv
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(vitae)
+```
+
+# Education
+
+```{r}
+library(tibble)
+tribble(
+  ~ Degree, ~ Year, ~ Institution, ~ Where,
+  "Master of Environmental Science and Management", "Expected June 2021", "Bren School of Environmental Science & Management", "University of California, Santa Barbara (UCSB)",
+  "Bachelor of Arts in Environmental Analysis and Spanish", "May 2015", "Claremont McKenna College", "Claremont, CA",
+  "Study Abroad", "Fall 2013", "SIT Comparative Ecology and Conservation", "Ecuador"
+) %>% 
+  detailed_entries(Degree, Year, Institution, Where)
+```
+
+# Experience
+
+```{r}
+library(tibble)
+tribble(
+  ~ Institution, ~ Year, ~ Position, ~ Where,
+  "MPA Compliance Graduate Research Assistant", "October 2020-Present", "Bren School, University of California, Santa Barbara (UCSB)", "Santa Barbara, CA",
+  "Fisheries Analyst", "June 2020-Present", "Nature Analytics & The Nature Conservancy", "Remote",
+  "Marine Protected Area Data Analyst and Program Assistant", "October 2019-Present", "California Marine Sanctuary Foundation & NOAA", "Santa Barbara, CA",
+  "Project Development Intern", "Summer 2019", "NOS Noroeste Sustentable", "La Paz, Mexico",
+  "Western Forest Conservation Coordinator", "April 2018-May 2019", "American Forest Foundation", "Washington, DC",
+  "Global Project Support Associate", "March 2017-March 2018", "Management Sciences for Health", "Arlington, VA",
+  "International Program Coordinator", "May 2016-Septemer 2016", "Foundation for Sustainable Development", "Salta, Argentina",
+  "Davis Project for Peace Grant Recipient", "Summer 2014", "Ecotourism Development Project", "El Topo, Ecuador",
+) %>% 
+  detailed_entries(Position, Year, Institution, Where)
+```
+
+# Skills & Certifications
+
+```{r}
+library(tibble)
+tribble(
+  ~ Skills, ~ Year, ~ Header, ~ Where,
+  "R/RStudio; Shiny; Git; ArcGIS; Microsoft Office Suite (Word, PowerPoint, Excel); Social Platforms", "", "Computer", "",
+  "Spanish (Full professional proficiency); Portuguese (Conversational)", "", "Language", "",
+  "PADI Advanced Open Water Diver; CPR certified", "", "Certifications", "",
+  "Ecuador, Argentina, Mozambique, Mexico, Brazil", "", "International Work Experience", ""
+) %>% 
+  detailed_entries(Skills, Year, Header, Where)
+```
+

@@ -1,0 +1,170 @@
+---
+title: "Bruv Validation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#load packages
+library(raster)
+library(tidyverse)
+library(sf)
+library(here)
+library(fasterize)
+library(stringr)
+library(janitor)
+library(fasterize)
+```
+
+#### **STEP 1:Read in MZ EZZ files and species distribution for Grey Reef Shark (Carcharhinus amblyrhynchos)**
+```{r}
+## read in MZ EEZ tif
+mz_rast_id <- raster(here("set_up/final_rasters/mz_eez_templates/mz_rast_id.tif"))
+plot(mz_rast_id)
+
+## Grab Moz Exclusive Economic Zone (EEZ) shapefile from local computer
+mz_eez_path <- 'G:/group_project/data/mz_eez'
+mz_shape <- list.files(mz_eez_path, full.names = TRUE) 
+
+mz_eez_sf <- sf::read_sf(mz_shape[6])
+
+## check coordinate system
+st_crs(mz_eez_sf)
+
+## read in grey reef shark iucn species distribution made in 2_iucn_species.Rmd
+iucn_grey_reef_shark <- raster(here("set_up/final_rasters/conservation_features/iucn_species/species_Carcharhinus amblyrhynchos.tif"))
+plot(iucn_grey_reef_shark)
+```
+
+#### **STEP 2: Next, run `5_bruv.Rmd` file to get the bruv files in your environment**
+
+#### **STEP 3: Read in priorization results for scenario 4 and 5**
+```{r}
+combined_path <- here("blm_sensitivity")
+combined_files <- list.files(combined_path, full.names = TRUE)
+
+combined_20_blm0.000001 <- raster(combined_files[4])
+plot(combined_20_blm0.000001)
+combined_20_blm0 <- raster(combined_files[14])
+plot(combined_20_blm0)
+
+#combined_20_blm0.000001[combined_20_blm0.000001 == 0] <- NA
+
+inverse_path <- here("final_results", "scenario_5_inverse")
+inverse_files <- list.files(inverse_path, full.names = TRUE)
+
+inverse_20_blm0.000001 <- raster(inverse_files[3])
+plot(inverse_20_blm0.000001)
+inverse_20_blm0 <- raster(inverse_files[4])
+plot(inverse_20_blm0)
+
+### read in existing mpas raster
+exist_mpas <- raster(here("set_up", "final_rasters", "planning_unit", "exist_mpa.tif"))
+
+### plot to make sure it looks okay
+plot(exist_mpas)
+
+```
+
+#### **STEP 4: Filter the focal species in the BRUV data**
+```{r}
+grey_reef_shark_df <- wcs_bruv_sf_maxn %>% 
+  filter(genus_species == "Carcharhinus amblyrhynchos")
+  
+```
+
+#### **STEP 5: Create a function to create interactive map with final priorization model, existing mpas, BRUV data, and IUCN distribution**
+```{r}
+create_bruv_map <- function(final_raster, mpas, bruv, iucn_distribution){
+
+  final_raster[final_raster == 0] <- NA
+  
+  tmap_mode("view") # Set to interactive viewing
+
+  tm_shape(iucn_grey_reef_shark)+
+    tm_raster("species_Carcharhinus_amblyrhynchos", palette="darkslategray3", alpha = 0.8,
+              legend.show = F)+
+  tm_shape(final_raster)+
+    tm_raster(final_raster[1], palette="navy", alpha = 0.65,legend.show = F)+
+  tm_shape(mz_eez_sf)+
+    tm_borders("black", lwd = .5) +
+  tm_shape(exist_mpas)+
+    tm_raster(exist_mpas[1], palette = "lightcoral", legend.show = F)+
+  tm_shape(grey_reef_shark_df) +
+    tm_dots("genus_species", clustering = T,  legend.show = FALSE, size = 0.5)+
+  tm_add_legend("fill",
+              col = c("navy", "lightcoral", "darkslategray3"),
+	            border.col = "black",
+	            labels = c('Suggested Areas','Existing MPAs', 'IUCN Distribution'),
+	            title="Prioritization Model & BRUV data")
+}
+
+create_bruv_map(combined_20_blm0.000001, exist_mpas, grey_reef_shark_df, iucn_grey_reef_shark)
+create_bruv_map(combined_20_blm0, exist_mpas, grey_reef_shark_df, iucn_grey_reef_shark)
+
+create_bruv_map(inverse_20_blm0.000001, exist_mpas, grey_reef_shark_df, iucn_grey_reef_shark)
+create_bruv_map(inverse_20_blm0, exist_mpas, grey_reef_shark_df, iucn_grey_reef_shark)
+```
+
+
+```{r}
+create_all_bruv_map <- function(final_raster, mpas, bruv1, bruv2, bruv3){
+
+  final_raster[final_raster == 0] <- NA
+  
+  tmap_mode("view") # Set to interactive viewing
+
+  tm_shape(final_raster)+
+    tm_raster(final_raster[1], palette="navy",alpha = 0.65, legend.show = F)+
+  tm_shape(mz_eez_sf)+
+    tm_borders("black", lwd = .5) +
+  tm_shape(exist_mpas)+
+    tm_raster(exist_mpas[1], palette = "lightcoral", legend.show = F)+
+  tm_shape(bruv1) +
+    tm_dots("genus_species", clustering = T,  legend.show = FALSE, size = 0.5)+
+  tm_shape(bruv2) +
+    tm_dots("sample_code", clustering = T,  legend.show = FALSE, size = 0.5)+
+  tm_shape(bruv3) +
+    tm_dots("sample_code", clustering = T,  legend.show = FALSE, size = 0.5)+
+    tmap_options(max.categories = 220)+
+    tm_add_legend("fill",
+              col = c("navy", "lightcoral"),
+	            border.col = "black",
+	            labels = c('Suggested Areas','Existing MPAs'),
+	            title="Prioritization Model & BRUV data")
+}
+
+create_all_bruv_map(combined_20_blm0.000001, exist_mpas, wcs_bruv_sf_maxn, popmr_bruv_sf,nm_bruv_sf)
+create_all_bruv_map(combined_20_blm0, exist_mpas, wcs_bruv_sf_maxn, popmr_bruv_sf,nm_bruv_sf)
+
+create_all_bruv_map(inverse_20_blm0.000001, exist_mpas, wcs_bruv_sf_maxn, popmr_bruv_sf,nm_bruv_sf)
+create_all_bruv_map(inverse_20_blm0, exist_mpas, wcs_bruv_sf_maxn, popmr_bruv_sf,nm_bruv_sf)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

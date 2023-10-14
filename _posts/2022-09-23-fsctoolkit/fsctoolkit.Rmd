@@ -1,0 +1,17 @@
+---
+title: "Fishery Solutions Center website"
+description: |
+  Client: Environmental Defense Fund
+date: 09-01-2022
+output:
+  distill::distill_article:
+    self_contained: false
+    code_folding: true
+---
+
+### Redesign of fisheries toolkit website
+
+Helped lead the conception, envisioning, site development, and material creation of EDF's revised [Fisheries Solution Center website](https://fisherysolutionscenter.edf.org/). Led workshops, focus groups, and assessments to solicit feedback, redesign the website framework, and refine the toolkit to better meet the needs of a broad and international set of users. 
+
+The website features a host of tools and resources for managing climate-resilient fisheries.
+

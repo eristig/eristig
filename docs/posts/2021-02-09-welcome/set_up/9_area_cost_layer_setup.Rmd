@@ -1,0 +1,70 @@
+---
+title: "Area Cost Layer Setup"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(raster)
+library(tidyverse)
+library(sf)
+library(here)
+library(fasterize)
+library(stringr)
+library(janitor)
+library(tmap)
+```
+
+#### **STEP 1: Read in Mozambique EEZ and Shapefile**
+```{r}
+## read in MZ EEZ tif
+mz_rast_id <- raster(here("set_up/final_rasters/mz_eez_templates/mz_rast_id.tif"))
+
+## Grab Moz Exclusive Economic Zone (EEZ) shapefile from local computer
+mz_eez_path <- 'G:/group_project/data/mz_eez'
+mz_shape <- list.files(mz_eez_path, full.names = TRUE) 
+
+mz_eez_sf <- sf::read_sf(mz_shape[6])
+
+## check coordinate system
+st_crs(mz_eez_sf)
+
+## Add a buffer of 10 km to make sure cells on the outer edges of the EEZ are included
+mz_eez_buffer_sf <- sf::st_buffer(mz_eez_sf, dist = 10000)
+```
+
+#### Cost Layer
+Other scenarios will require more prep to create cost layer, so they will be found in separate Rmarkdowns. Since this scenario is so short, we created it in this Rmarkdown. 
+```{r}
+### pull in the initial MZ EEZ raster to start with
+area_raster <- raster(here("set_up", "final_rasters", "mz_eez_templates", "mz_rast_id.tif"))
+
+### assign a uniform cost value of 0.5 to all cells since the area of the planning units are the same. 
+### We assigned a value of 0.5 since we will transform cost layers in future simulations to be between 0-1 and this 0.5 is a middle value in this range 
+values(area_raster) <- 0.5
+
+### mask the area raster to just the MZ EEZ, so all cells outside the EEZ are assigned NA AND rename it to cost_area
+cost_area <- mask(area_raster, mz_rast_id)
+
+### check it by plotting!
+plot(cost_area)
+
+### write raster
+writeRaster(cost_area, here('set_up/final_rasters/costs/area_cost.tif'), overwrite = TRUE)
+```
+
+```{r}
+tmap_mode("view") # Set to interactive viewing
+
+tm_shape(cost_area) +
+  tm_basemap("Stamen.Terrain")+
+  tm_raster("mz_rast_id",alpha=0.9, palette="viridis")
+  
+```
+
+
+
+
+
+

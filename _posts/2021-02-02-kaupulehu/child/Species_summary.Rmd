@@ -1,0 +1,36 @@
+
+```{r, label="{{k}}a", results='asis'}
+## TEXT
+k <- {{k}}
+# Filter for one species
+one_species <- species %>% 
+ filter(species == MyParsList[[k]]$MyPars@Species)
+# Species function
+cat(speciesText(one_species))
+```
+#
+```{r, label="{{k}}b", results='asis'}
+# Parameters function
+cat(parametersText(one_species))
+```
+#
+```{r, label="{{k}}c", multi.col=TRUE}
+## TABLES
+  tableSPR(MyParsList, output, k)
+  tableYPR(MyParsList, output, k)
+```
+#
+```{r, label="{{k}}d", multi.col=TRUE, fig.width=5, fig.height=6.5}
+## PARETO PLOTS
+contourSPR(MyParsList, output, k)
+contourYPR(MyParsList, output, k)
+```
+#
+```{r, label="{{k}}e", multi.col=TRUE, fig.width=5, fig.height=6}
+## CONTOUR PLOTS
+paretoColor(MyParsList, output, k) 
+paretoShadow(MyParsList, output, k)
+```
+
+***
+\newpage

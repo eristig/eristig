@@ -1,0 +1,245 @@
+---
+title: "2_iucn_species"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#load packages
+library(raster)
+library(tidyverse)
+library(sf)
+library(here)
+library(fasterize)
+library(stringr)
+library(janitor)
+library(fasterize)
+```
+
+#### **STEP 1: Read in Mozambique EEZ and Shapefile**
+```{r}
+## read in MZ EEZ tif
+mz_rast_id <- raster(here("set_up/final_rasters/mz_eez_templates/mz_rast_id.tif"))
+plot(mz_rast_id)
+
+## Grab Moz Exclusive Economic Zone (EEZ) shapefile from local computer
+mz_eez_path <- 'G:/group_project/data/mz_eez'
+mz_shape <- list.files(mz_eez_path, full.names = TRUE) 
+
+mz_eez_sf <- sf::read_sf(mz_shape[6])
+
+## check coordinate system
+st_crs(mz_eez_sf)
+
+## Add a buffer of 10 km to make sure cells on the outer edges of the EEZ are included
+#mz_eez_buffer_sf <- sf::st_buffer(mz_eez_sf, dist = 10000)
+```
+
+
+#### **STEP 2: Read in IUCN CHONDRICHTHYES Shapefiles**
+```{r}
+### grab iucn data from local computer
+iucn_path <- 'G:/group_project/data/updated_iucn'
+iucn_shape <- list.files(iucn_path, full.names = TRUE) 
+
+iucn_sf <- sf::read_sf(iucn_shape[9])
+
+### create a dataframe to look at the different variables and remove geometry to speed it up
+iucn_df <- iucn_sf %>%
+  as.data.frame() %>% 
+  select(-geometry)
+
+```
+
+
+#### **STEP 3: Test with Two Species**
+```{r}
+### create dataframe that only contains species and changes to correct crs
+thresher_shark <- iucn_sf %>% 
+  filter(binomial == "Alopias pelagicus") %>% 
+  st_transform(., crs = st_crs(mz_eez_sf))
+
+### check crs to make sure it matches
+st_crs(thresher_shark)
+
+### create a raster 
+thresher_shark_rast <- fasterize::fasterize(thresher_shark, mz_rast_id) %>% 
+  mask(mz_eez_sf)
+
+### plot to see how it looks
+plot(thresher_shark_rast)
+
+### made all NA = 0 (not sure if this makes a difference)
+thresher_shark_rast[is.na(thresher_shark_rast[])] <- 0
+plot(thresher_shark_rast)
+
+### masked it to make all values outside the eez = NA
+thresher_shark_rast <- mask(thresher_shark_rast, mz_eez_sf)
+plot(thresher_shark_rast)
+
+### create dataframe that only contains species and changes to correct crs
+dusky_shark <- iucn_sf %>% 
+  filter(binomial == "Carcharhinus obscurus") %>% 
+  st_transform(., crs = st_crs(mz_eez_sf))
+
+### check crs to make sure it matches
+st_crs(dusky_shark)
+
+### create a raster 
+dusky_shark_rast <- fasterize::fasterize(dusky_shark, mz_rast_id) %>% 
+  mask(mz_eez_sf)
+
+### plot to see how it looks
+plot(dusky_shark_rast)
+
+### create dataframe that only contains species and changes to correct crs
+shark <- iucn_sf %>% 
+  filter(binomial == "Carcharhinus amblyrhynchos") %>% 
+  st_transform(., crs = st_crs(mz_eez_sf))
+
+### check crs to make sure it matches
+st_crs(shark)
+
+### create a raster 
+shark_rast <- fasterize::fasterize(shark, mz_rast_id) %>% 
+  mask(mz_eez_sf)
+
+### plot to see how it looks
+plot(shark_rast)
+```
+
+#### **STEP 4: Create a Function that Creates a Raster for Each Species**
+```{r}
+# #create raster function by species name
+create_rast <- function(iucn_sf, species_name){
+  outfile <- sprintf(here('set_up/final_rasters/conservation_features/iucn_species/species_%s.tif'), species_name)
+  message('Processing species ', species_name, ' to create file ', outfile)
+
+  species_df <- iucn_sf %>%
+  filter(binomial == species_name) %>% 
+  st_transform(., crs = st_crs(mz_eez_sf))
+
+species_rast <- fasterize::fasterize(species_df, mz_rast_id) %>% 
+  mask(mz_eez_sf)
+
+writeRaster(species_rast, filename = outfile, overwrite = TRUE)
+
+return('yay it works')
+
+}
+```
+
+#### **STEP 5: Create Vector of Species Names for Loop**
+```{r}
+### create vector 
+species_name <- c("Alopias pelagicus",
+                 "Alopias superciliosus",
+                 "Alopias vulpinus",
+                 "Carcharhinus amblyrhynchos",
+                 "Carcharhinus longimanus",
+                 "Carcharhinus obscurus",
+                 "Carcharodon carcharias",
+                 "Isurus oxyrinchus",
+                 "Isurus paucus",
+                 "Carcharias taurus",
+                 "Rhincodon typus",
+                 "Sphyrna lewini",
+                 "Sphyrna mokarran",
+                 "Sphyrna zygaena",
+                 "Stegostoma tigrinum",
+                 "Mobula alfredi",
+                 "Mobula birostris",
+                 "Mobula kuhlii",
+                 "Mobula mobular",
+                 "Pristis pristis",
+                 "Pristis zijsron",
+                 "Rostroraja alba",
+                 "Rhina ancylostoma",
+                 "Acroteriobatus leucospilus")
+                 
+```
+
+#### **STEP 6: Create & Run Loop with Species Vector**
+```{r}
+### create loop 
+for (i in seq_along(species_name)) {
+  create_rast(iucn_sf, species_name[i])
+}
+```
+
+#### **STEP 7: Pull in the three IUCN distributions that were refined with WCS experts**
+```{r}
+### read in the range map for Pseudoginglymostoma brevicaudatum:
+p_brevicaudatum <-here("set_up", "raw_data", "pseudoginglymostoma_brevicaudatum")
+p_brevicaudatum_shape <- list.files(p_brevicaudatum, full.names = TRUE) 
+
+p_brevicaudatum_sf <- sf::read_sf(p_brevicaudatum_shape[7]) %>% 
+    st_transform(., crs = st_crs(mz_eez_sf))
+
+p_brevicaudatum_rast <- fasterize::fasterize(p_brevicaudatum_sf, mz_rast_id) %>% 
+  mask(mz_eez_sf)
+
+plot(p_brevicaudatum_rast)
+
+writeRaster(p_brevicaudatum_rast, here('set_up/final_rasters/conservation_features/iucn_species/species_Pseudoginglymostoma_brevicaudatum_wcs.tif'), overwrite = TRUE)
+
+### read in the range map for Rhynchobatus australiae:
+r_ausrtraliae <-here("set_up", "raw_data", "rhynchobatus_australiae")
+r_ausrtraliae_shape <- list.files(r_ausrtraliae, full.names = TRUE) 
+
+r_australiae_sf <- sf::read_sf(r_ausrtraliae_shape[7]) %>% 
+    st_transform(., crs = st_crs(mz_eez_sf))
+
+r_australiae_rast <- fasterize::fasterize(r_australiae_sf, mz_rast_id) %>% 
+  mask(mz_eez_sf)
+
+plot(r_australiae_rast)
+
+writeRaster(r_australiae_rast, here('set_up/final_rasters/conservation_features/iucn_species/species_Rhynchobatus_australiae_wcs.tif'), overwrite = TRUE)
+
+### read in the range map for Rhynchobatus djiddensis:
+r_djiddensis <-here("set_up", "raw_data", "rhynchobatus_djiddensis")
+r_djiddensis_shape <- list.files(r_djiddensis, full.names = TRUE) 
+
+r_djiddensis_sf <- sf::read_sf(r_djiddensis_shape[7]) %>% 
+    st_transform(., crs = st_crs(mz_eez_sf))
+
+r_djiddensis_rast <- fasterize::fasterize(r_djiddensis_sf, mz_rast_id) %>% 
+  mask(mz_eez_sf)
+
+plot(r_djiddensis_rast)
+
+writeRaster(r_djiddensis_rast, here('set_up/final_rasters/conservation_features/iucn_species/species_Rhynchobatus_djiddensis_wcs.tif'), overwrite = TRUE)
+
+```
+
+
+#### **STEP 8: Creating Species Stack** --must clear environment to run this chuck...
+```{r}
+### create file path to read in all 30 species tifs in 
+species_path <- here("set_up", "final_rasters", "conservation_features", "iucn_species")
+species_files <- list.files(species_path, full.names = TRUE)
+
+### stack them (this includes the three that we manually created and saved in the same IUCN folder)
+species_stack <- stack(species_files)
+
+### plot to see how they look and make a data frame to double check
+plot(species_stack)
+species_stack_df <- as.data.frame(species_stack)
+
+### write raster
+writeRaster(species_stack, here('set_up/final_rasters/conservation_features/species_stack.tif'), options="INTERLEAVE=BAND",  overwrite = TRUE)
+```
+
+Citations:
+ - 
+ 
+Outputs:
+ - `species_XXX XXX` = tif files of each focal species to be used (27 total)
+ - `species_stack.tif` = raster stack of all focal species for conservation features
+ 
+End script.
+
+
+

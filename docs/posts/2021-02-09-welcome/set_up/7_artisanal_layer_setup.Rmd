@@ -1,0 +1,118 @@
+---
+title: "Artisanal Cost Layer"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(raster)
+library(tidyverse)
+library(sf)
+library(here)
+library(fasterize)
+library(stringr)
+library(janitor)
+```
+
+#### **STEP 1: Read in Mozambique EEZ and Shapefile**
+```{r}
+## read in MZ EEZ tif
+mz_rast_id <- raster(here("set_up/final_rasters/mz_eez_templates/mz_rast_id.tif"))
+
+## Grab Moz Exclusive Economic Zone (EEZ) shapefile from local computer
+mz_eez_path <- 'G:/group_project/data/mz_eez'
+mz_shape <- list.files(mz_eez_path, full.names = TRUE) 
+
+mz_eez_sf <- sf::read_sf(mz_shape[6])
+
+## check coordinate system
+st_crs(mz_eez_sf)
+
+## Add a buffer of 10 km to make sure cells on the outer edges of the EEZ are included
+mz_eez_buffer_sf <- sf::st_buffer(mz_eez_sf, dist = 10000)
+```
+
+
+#### Cost Layer
+Other scenarios will require more prep to create cost layer, so they will be found in separate Rmarkdowns. Since this scenario is so short, we created it in this Rmarkdown.
+```{r}
+### pull in the artisanal fishing pressure tif file from costs folder in repo
+art_fish_rast <- raster(here("set_up", "raw_data", "artisanal", "kernel_d_fishing_moz_v2.tif"))
+
+### now we need to grab the Moz raster we previously created to make sure the artisanal fishing raster is in the right projections
+art_fish <- raster::projectRaster(art_fish_rast, mz_rast_id, 
+                                  res = 10000, 
+                                  method = 'ngb')
+
+### create a data frame to see what value ranges we are working with
+art_fish_df <- as.data.frame(art_fish)
+
+### plot to see what it looks like
+plot(art_fish)
+
+### Priortizr does not like cost values of NA so first let's change all the NA's --> 0
+art_fish[is.na(art_fish[])] <- 0
+plot(art_fish)
+
+### since we changed all NAs to 0 we need to again mask it to change values on land and past the EEZ to NA
+art_fish <- mask(art_fish, mz_eez_sf)
+plot(art_fish)
+
+### Prioritzr also doesn't like cost values of 0 so now let's change any 0 values in the EEZ to 0.0001
+# values(art_fish)[values(art_fish == 0)] = 0.001
+# plot(art_fish)
+# #art_fish_rescaled[art_fish_rescaled == 0] <- 500
+
+### now let's check it #x100 method
+# art_fish_df <- art_fish %>% 
+#   as.data.frame() %>%
+#   mutate(artisanal_rescale = kernel_d_fishing_moz_v2/max(kernel_d_fishing_moz_v2, na.rm = TRUE)*100) %>% 
+#   mutate(artisanal_nozero = case_when(artisanal_rescale == 0 ~ .1, 
+#                                       artisanal_rescale < 0.5 ~ .1,
+#                                       TRUE ~ as.numeric(.$artisanal_rescale))) %>% 
+#   mutate(id = 1:n())
+
+
+### now let's check it #0-1 method
+art_fish_df <- art_fish %>% 
+  as.data.frame() %>%
+  mutate(artisanal_convert = case_when(kernel_d_fishing_moz_v2 < 0.1 ~ 0,
+                                       TRUE ~ as.numeric(.$kernel_d_fishing_moz_v2))) %>%
+  mutate(artisanal_rescale = artisanal_convert/max(artisanal_convert, na.rm = TRUE)) %>% 
+  mutate(artisanal_nonzero = case_when(artisanal_rescale == 0 ~ .0001, 
+                                      TRUE ~ as.numeric(.$artisanal_rescale))) %>% 
+  mutate(id = 1:n())
+  
+
+### now that we've changed the zeros and rescaled, convert back to a raster
+art_fish_rescaled <- subs(mz_rast_id, art_fish_df, by = 'id', which = 'artisanal_nonzero')
+plot(art_fish_rescaled)
+
+
+### now lets rescale from 0 to 1
+#art_fish_rescaled <- log(art_fish+1)/ cellStats(log(art_fish+1), max)
+# art_fish_rescaled <- art_fish/maxValue(art_fish)
+# plot(art_fish_rescaled)
+
+
+
+
+### let's check it again!
+# art_fish_rescaled_df <- art_fish_rescaled %>% 
+#   as.data.frame() 
+
+## Looks good lets save as a tif
+writeRaster(art_fish_rescaled, here('set_up/final_rasters/costs/cost_art_fish.tif'), overwrite = TRUE)
+```
+
+
+```{r}
+tmap_mode("view") # Set to interactive viewing
+
+tm_shape(art_fish_rescaled) +
+  tm_basemap("Stamen.Terrain")+
+  tm_raster("artisanal_nonzero", alpha=0.9, palette = "viridis")
+  
+```
+

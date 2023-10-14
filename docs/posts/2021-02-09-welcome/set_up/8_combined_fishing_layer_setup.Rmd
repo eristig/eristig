@@ -1,0 +1,165 @@
+---
+title: "Combined Fishing Pressure"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(raster)
+library(tidyverse)
+library(sf)
+library(here)
+library(fasterize)
+library(stringr)
+library(janitor)
+```
+
+#### **STEP 1: Read in Mozambique EEZ and Shapefile**
+```{r}
+## read in MZ EEZ tif
+mz_rast_id <- raster(here("set_up/final_rasters/mz_eez_templates/mz_rast_id.tif"))
+
+## Grab Moz Exclusive Economic Zone (EEZ) shapefile from local computer
+mz_eez_path <- 'G:/group_project/data/mz_eez'
+mz_shape <- list.files(mz_eez_path, full.names = TRUE) 
+
+mz_eez_sf <- sf::read_sf(mz_shape[6])
+
+## check coordinate system
+st_crs(mz_eez_sf)
+
+## Add a buffer of 10 km to make sure cells on the outer edges of the EEZ are included
+mz_eez_buffer_sf <- sf::st_buffer(mz_eez_sf, dist = 10000)
+```
+
+
+#### **STEP 2: Read in Artisanal and Industrial Fishing Rasters**
+```{r}
+### read in artisanal fishing raster
+art_fish_rast <- raster(here("set_up", "final_rasters", "costs", "cost_art_fish.tif"))
+
+### read in industrial (rescaled and summed) raster
+industrial_sum_rescaled <- raster(here("set_up", "final_rasters", "costs", "cost_industrial_sum.tif"))
+```
+
+
+#### **STEP 4: Create raster stack of all fishing**
+```{r}
+### create raster stack
+combined_fishing_stack <- stack(industrial_sum_rescaled, art_fish_rast)
+
+### plot it!
+plot(combined_fishing_stack)
+
+combined_stack_sum <- calc(combined_fishing_stack, fun = sum)
+plot(combined_stack_sum)
+
+
+writeRaster(combined_stack_sum, here('set_up/final_rasters/costs/combined_stack_sum.tif'), 
+            overwrite = TRUE)
+
+### save it
+writeRaster(combined_fishing_stack, here('set_up/final_rasters/costs/combined_fishing_stack.tif'), 
+            options="INTERLEAVE=BAND",
+            overwrite = TRUE)
+```
+
+```{r}
+tmap_mode("view") # Set to interactive viewing
+
+tm_shape(combined_stack_sum) +
+  tm_basemap("Stamen.Terrain")+
+  tm_raster("layer", alpha=0.9, palette = "viridis")
+  
+```
+
+#### Exploring the bell curve
+```{r}
+## create plot that matches arcgis
+combined_stack_sum_df <- rasterToPoints(combined_stack_sum) %>% 
+  as.data.frame()
+
+ggplot()+
+  geom_raster(data = combined_stack_sum_df, aes(x,y, fill = layer))+
+  geom_sf(data = mz_eez_sf, fill = NA)+
+  scale_fill_continuous(type = "viridis",breaks =  c(0,0.02,0.1,0.2,.44,1))
+
+```
+
+Made the middle ground values (0.1-0.2) or yellow in our Arc Maps the highest values (can't remember if it should be the highest or lowest but it's an easy switch).
+```{r}
+m <- c(0.00, 0.02, 4,    
+       0.02, 0.1, 2,    
+       0.1, 0.2, 1,
+       0.2, 0.44, 3,
+       0.44, 1.00, 5)
+
+### wrap the vector into a matrix by rows
+rcl_mtx <- matrix(m, ncol=3, byrow=TRUE)
+
+combined_reclass <- reclassify(combined_stack_sum, rcl_mtx)
+plot(combined_reclass)
+
+combined_reclass_df <- rasterToPoints(combined_reclass) %>% 
+  as.data.frame()
+
+## change values
+# combined_bell_curve <- combined_stack_sum_df %>% 
+#   rename(pressure = layer) %>% 
+#   mutate(bell_curve_pressure = case_when(pressure <= 0.02 ~ 1,
+#                                          pressure > 0.02 & pressure <= 0.1 ~ 3,
+#                                          pressure > 0.1 & pressure <= 0.2 ~ 5,
+#                                          pressure > 0.2 & pressure <= 0.44 ~ 4,
+#                                          pressure > 0.44 ~ 2)) %>% 
+#   mutate(id = 1:n())
+# 
+ggplot()+
+  geom_raster(data = combined_reclass_df, aes(x,y, fill = layer))+
+  geom_sf(data = mz_eez_sf, fill = NA)+
+  scale_fill_continuous(type = "viridis")
+
+writeRaster(combined_reclass, here('set_up/final_rasters/costs/combined_reclass.tif'), 
+            overwrite = TRUE)
+```
+
+```{r}
+m_dist <- c(0.00, 0.02, NA,    
+       0.02, 0.1, NA,    
+       0.1, 0.2, 1,
+       0.2, 0.44, NA,
+       0.44, 1.00, NA)
+
+### wrap the vector into a matrix by rows
+rcl_mtx_dist <- matrix(m_dist, ncol=3, byrow=TRUE)
+
+combined_reclass_dist <- reclassify(combined_stack_sum, rcl_mtx_dist)
+plot(combined_reclass_dist)
+
+## use the raster::distance() function, which calculates a distance for every NA cell to the nearest non-NA cell.
+combined_dist_rast <- raster::distance(combined_reclass_dist) %>% 
+  mask(mz_eez_sf) # mask so the land distances are not calculated
+
+## plot it!
+plot(combined_dist_rast)
+
+### save it
+writeRaster(combined_dist_rast, here('set_up/final_rasters/costs/combined_dist_rast.tif'), overwrite = TRUE)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
